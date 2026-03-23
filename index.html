@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>著作權 SCBKR 責任邊界引擎 v1 | Copyright SCBKR Responsibility-Boundary Engine v1</title>
+    <meta
+      name="description"
+      content="著作權 SCBKR 責任邊界引擎 v1 雙語前端 Demo，展示邊界成立、失效條件、責任鏈與 Semantic Responsibility Hash。 Bilingual front-end demo for the Copyright SCBKR Responsibility-Boundary Engine v1."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="#hero">
+          <span>著作權 SCBKR 責任邊界引擎</span>
+          <span>Copyright SCBKR Responsibility-Boundary Engine</span>
+        </a>
+        <nav class="topnav" aria-label="Primary">
+          <a href="#overview">引擎說明 / Overview</a>
+          <a href="#interactive-demo">互動示範 / Interactive Demo</a>
+          <a href="#auto-demo">自動示範 / Auto Demo</a>
+          <a href="#licensing-note">授權合作 / Licensing</a>
+        </nav>
+      </header>
+
+      <main>
+        <section id="hero" class="hero panel">
+          <div class="hero__backdrop"></div>
+          <div class="hero__content">
+            <p class="eyebrow">Governance Demo / 治理演示系統</p>
+            <h1>
+              著作權 SCBKR 責任邊界引擎
+              <span>Copyright SCBKR Responsibility-Boundary Engine</span>
+            </h1>
+            <p class="hero__lead">
+              不是問能不能用，而是問在哪個邊界內成立、何時失效、失效後誰負責。<br />
+              Not asking only whether content can be used, but under which boundary it is valid, when it fails, and who bears responsibility afterward.
+            </p>
+            <div class="hero__actions">
+              <a class="button button--primary" href="#interactive-demo">開始互動示範 / Start Interactive Demo</a>
+              <button class="button button--secondary" id="heroAutoDemo" type="button">觀看自動示範 / Watch Auto Demo</button>
+            </div>
+            <div class="owner-card">
+              <p>Owner: 許文耀 / 沈耀888π</p>
+              <p>Wen-Yao Hsu / Yao Shen 888π</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="overview" class="section panel">
+          <div class="section-heading">
+            <p class="eyebrow">Engine Overview / 引擎說明</p>
+            <h2>以責任邊界為核心的治理判定介面<br /><span>Governance adjudication centered on responsibility boundaries</span></h2>
+          </div>
+          <div class="overview-grid">
+            <article class="info-card">
+              <h3>核心命題 / Core Question</h3>
+              <p>不是只判斷資料是否可用，而是定位本次使用在何種授權、語意、商業與責任邊界內成立。</p>
+              <p>Rather than only asking if content is usable, the engine locates the exact licensing, semantic, commercial, and liability boundary that makes a use valid.</p>
+            </article>
+            <article class="info-card">
+              <h3>失效機制 / Failure Logic</h3>
+              <p>一旦用途超出聲明邊界、缺少閉環條件、或責任鏈斷裂，結果會從 ALLOW / WARN 進入 NON-CLOSABLE、VOID 或 OVERRUN。</p>
+              <p>When a use exceeds its declared boundary, lacks closure conditions, or breaks the responsibility chain, the state escalates from ALLOW / WARN into NON-CLOSABLE, VOID, or OVERRUN.</p>
+            </article>
+            <article class="info-card">
+              <h3>可追蹤輸出 / Traceable Output</h3>
+              <p>每次裁決都會輸出 SCBKR 五維拆解、責任錨點、失效條件與可追蹤的 Semantic Responsibility Hash。</p>
+              <p>Every adjudication emits a five-dimensional SCBKR breakdown, responsibility anchors, failure conditions, and a traceable Semantic Responsibility Hash.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="interactive-demo" class="section panel">
+          <div class="section-heading">
+            <p class="eyebrow">Interactive Demo / 互動示範區</p>
+            <h2>手動切換案例與用途，執行責任邊界裁決<br /><span>Switch scenarios and usage modes to run responsibility-boundary judgments</span></h2>
+          </div>
+          <div class="demo-layout">
+            <div class="controls-card">
+              <div class="control-group">
+                <h3>案例選擇 / Scenario Selection</h3>
+                <div class="chip-group" id="caseButtons"></div>
+              </div>
+              <div class="control-group">
+                <h3>用途選擇 / Usage Selection</h3>
+                <div class="chip-group" id="useButtons"></div>
+              </div>
+              <div class="control-group control-group--actions">
+                <button class="button button--primary" id="runJudgment" type="button">執行裁決 / Run Judgment</button>
+                <button class="button button--accent" id="generateHash" type="button">生成責任雜湊 / Generate Responsibility Hash</button>
+                <button class="button button--ghost" id="resetDemo" type="button">重設 / Reset</button>
+              </div>
+              <div class="selection-summary">
+                <p><strong>目前案例 / Current Scenario:</strong> <span id="selectedCaseLabel">-</span></p>
+                <p><strong>目前用途 / Current Usage:</strong> <span id="selectedUseLabel">-</span></p>
+              </div>
+            </div>
+
+            <div class="result-card" id="resultCard">
+              <div class="result-card__headline">
+                <p class="eyebrow">Decision State / 判決狀態</p>
+                <div id="decisionState" class="decision-state decision-state--idle">READY</div>
+                <p id="decisionSummary" class="decision-summary">選擇案例與用途後執行裁決。 / Select a scenario and usage mode, then run judgment.</p>
+              </div>
+
+              <div class="result-grid">
+                <article class="detail-panel">
+                  <h3>SCBKR Breakdown / SCBKR 拆解</h3>
+                  <dl id="scbkrBreakdown" class="metric-list"></dl>
+                </article>
+                <article class="detail-panel">
+                  <h3>Boundary Judgment / 邊界判定</h3>
+                  <div id="boundaryModel" class="detail-copy"></div>
+                </article>
+                <article class="detail-panel">
+                  <h3>Failure Conditions / 失效條件</h3>
+                  <ul id="failureConditions" class="detail-list"></ul>
+                </article>
+                <article class="detail-panel">
+                  <h3>Responsibility Anchor / 責任錨點</h3>
+                  <ul id="responsibilityAnchor" class="detail-list"></ul>
+                </article>
+                <article class="detail-panel detail-panel--hash">
+                  <h3>Semantic Responsibility Hash / 語意責任雜湊值</h3>
+                  <code id="hashValue" class="hash-display">Awaiting judgment / 等待裁決</code>
+                  <p id="timestampValue" class="timestamp">Timestamp / 時間戳記：—</p>
+                </article>
+              </div>
+              <div class="licensing-callout">
+                <p>如需算法 API 授權合作，請聯繫 許文耀 / 沈耀888π</p>
+                <p>For algorithm/API licensing or collaboration, contact Wen-Yao Hsu / Yao Shen 888π</p>
+                <p><strong>Official Website:</strong> <a href="https://hijo790401.github.io/shen-yao-portal/" target="_blank" rel="noreferrer">https://hijo790401.github.io/shen-yao-portal/</a></p>
+                <p><strong>Email:</strong> <a href="mailto:ken0963521@gmail.com">ken0963521@gmail.com</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="auto-demo" class="section panel">
+          <div class="section-heading">
+            <p class="eyebrow">Auto Demo / 自動播放示範區</p>
+            <h2>依序展示用途升高時的邊界變化與責任轉移<br /><span>Observe boundary shifts and responsibility transfer as usage intensity increases</span></h2>
+          </div>
+          <div class="auto-demo-card">
+            <div class="auto-demo-card__controls">
+              <button class="button button--secondary" id="playAutoDemo" type="button">重播自動示範 / Replay Auto Demo</button>
+              <p class="auto-demo-note">流程：新聞內容授權案例 → Summary → RAG Assist → Training → Commercial Generation → Hash。</p>
+              <p class="auto-demo-note">Flow: News Content Licensing → Summary → RAG Assist → Training → Commercial Generation → Hash.</p>
+            </div>
+            <ol id="autoDemoTimeline" class="timeline"></ol>
+          </div>
+        </section>
+
+        <section id="scbkr-explanation" class="section panel">
+          <div class="section-heading">
+            <p class="eyebrow">SCBKR Explanation / SCBKR 說明區</p>
+            <h2>五維結構對應語意、商業與責任鏈閉環<br /><span>Five dimensions covering semantics, commercial scope, and responsibility closure</span></h2>
+          </div>
+          <div class="explanation-grid">
+            <article class="info-card"><h3>S — Source Scope / 來源範圍</h3><p>定義資料來源是否有授權、引用條件、期限與轉授權限制。</p><p>Defines whether the source has licensing, citation requirements, term limits, and sublicense restrictions.</p></article>
+            <article class="info-card"><h3>C — Claim Surface / 主張表面</h3><p>界定系統對輸出結果主張到何種程度，是否宣稱等價替代原內容。</p><p>Sets how strongly the system claims its output and whether it substitutes the original content.</p></article>
+            <article class="info-card"><h3>B — Boundary Integrity / 邊界完整性</h3><p>檢查用途是否仍留在原授權、原上下文與原責任結構內。</p><p>Checks whether the use remains inside the original license, context, and liability structure.</p></article>
+            <article class="info-card"><h3>K — Knowledge Transformation / 知識轉換</h3><p>判定是否只是摘要、檢索輔助，或已進入模型訓練與生成再製。</p><p>Determines whether the activity is summary, retrieval assistance, or has escalated into training and generative reproduction.</p></article>
+            <article class="info-card"><h3>R — Responsibility Relay / 責任接力</h3><p>明確列出失效後由資料供應方、模型方、部署方或商業使用方承擔何種責任。</p><p>Specifies whether responsibility transfers to the source provider, model operator, deployer, or commercial user after failure.</p></article>
+          </div>
+        </section>
+
+        <section id="boundary-models" class="section panel">
+          <div class="section-heading">
+            <p class="eyebrow">Boundary Models / 邊界模型區</p>
+            <h2>以治理視角表達可成立、需警示、不可閉合與越界狀態<br /><span>Governance-oriented boundary models for valid, warned, non-closable, and overrun states</span></h2>
+          </div>
+          <div class="model-grid">
+            <article class="model-card"><h3>Closed Attribution Boundary / 閉合歸因邊界</h3><p>適用於來源明確、用途受限且責任可追蹤的摘要或檢索輔助場景。</p><p>Applies when source attribution is explicit, use is constrained, and responsibility remains traceable for summary or retrieval assistance.</p></article>
+            <article class="model-card"><h3>Conditional Derivation Boundary / 條件式衍生邊界</h3><p>允許有限轉換，但需要保存引用、權利聲明與人工覆核機制。</p><p>Allows limited transformation, provided that citation, rights notices, and human review remain in place.</p></article>
+            <article class="model-card"><h3>Non-Closable Liability Boundary / 不可閉合責任邊界</h3><p>當訓練或大規模再利用無法回收至原授權條件時，責任鏈不再閉合。</p><p>When training or large-scale reuse cannot be brought back under the original license terms, the liability chain no longer closes.</p></article>
+            <article class="model-card"><h3>Overrun Commercial Boundary / 商業越界邊界</h3><p>在商業生成、替代型輸出或衍生分發場景中，若超出明示授權即進入越界。</p><p>Commercial generation, substitutive outputs, or derivative redistribution enter overrun once they exceed explicit authorization.</p></article>
+          </div>
+        </section>
+
+        <section id="result-states" class="section panel">
+          <div class="section-heading">
+            <p class="eyebrow">Result States / 判決狀態區</p>
+            <h2>每個狀態都對應可審計的治理含義<br /><span>Each state maps to an auditable governance meaning</span></h2>
+          </div>
+          <div class="state-grid">
+            <article class="state-card state-card--allow"><h3>ALLOW</h3><p>授權與用途條件完整，責任鏈可追蹤且可閉合。</p><p>License and usage conditions remain intact, with a traceable and closable responsibility chain.</p></article>
+            <article class="state-card state-card--warn"><h3>WARN</h3><p>可有限成立，但需明確保留來源、限制用途與監控失效條件。</p><p>Conditionally valid, but requires explicit source retention, usage limits, and monitoring of failure triggers.</p></article>
+            <article class="state-card state-card--warn"><h3>NON-CLOSABLE</h3><p>責任鏈無法回到原授權閉環，需停止自動擴張並補足授權。</p><p>The responsibility chain cannot return to the original licensing closure; automated expansion should stop until licensing is extended.</p></article>
+            <article class="state-card state-card--void"><h3>VOID</h3><p>授權條件已失效或原主張不成立，使用結果不應被視為合格。</p><p>License conditions have failed or the original claim is invalid, so the resulting use should not be treated as qualified.</p></article>
+            <article class="state-card state-card--void"><h3>OVERRUN</h3><p>商業生成或分發越過授權邊界，由越界方承擔主要責任。</p><p>Commercial generation or redistribution exceeds the authorized boundary, transferring primary responsibility to the overrunning party.</p></article>
+          </div>
+        </section>
+
+        <section id="licensing-note" class="section panel licensing-section">
+          <div class="section-heading">
+            <p class="eyebrow">Licensing Note / 授權合作說明</p>
+            <h2>算法 / API 授權合作與演示聯繫資訊<br /><span>Algorithm / API licensing collaboration and demo contact information</span></h2>
+          </div>
+          <div class="licensing-grid">
+            <article class="info-card">
+              <h3>合作提示 / Collaboration Note</h3>
+              <p>如需算法 API 授權合作，請聯繫 許文耀 / 沈耀888π。</p>
+              <p>For algorithm/API licensing or collaboration, contact Wen-Yao Hsu / Yao Shen 888π.</p>
+            </article>
+            <article class="info-card">
+              <h3>Owner / 所有者</h3>
+              <p>Owner: 許文耀 / 沈耀888π</p>
+              <p>Wen-Yao Hsu / Yao Shen 888π</p>
+            </article>
+            <article class="info-card">
+              <h3>Official Website / 官網網址</h3>
+              <p><a href="https://hijo790401.github.io/shen-yao-portal/" target="_blank" rel="noreferrer">https://hijo790401.github.io/shen-yao-portal/</a></p>
+              <p>Email: <a href="mailto:ken0963521@gmail.com">ken0963521@gmail.com</a></p>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer panel">
+        <div>
+          <p><strong>Owner:</strong> 許文耀 / 沈耀888π</p>
+          <p>Wen-Yao Hsu / Yao Shen 888π</p>
+        </div>
+        <div>
+          <p><strong>Official Website:</strong> <a href="https://hijo790401.github.io/shen-yao-portal/" target="_blank" rel="noreferrer">hijo790401.github.io/shen-yao-portal/</a></p>
+          <p><strong>Email:</strong> <a href="mailto:ken0963521@gmail.com">ken0963521@gmail.com</a></p>
+        </div>
+        <div>
+          <p>本頁為著作權 SCBKR 責任邊界引擎 v1 的雙語治理 Demo。</p>
+          <p>This page is a bilingual governance demo for the Copyright SCBKR Responsibility-Boundary Engine v1.</p>
+          <p>如需算法 API 授權合作，請聯繫 許文耀 / 沈耀888π。</p>
+          <p>For algorithm/API licensing or collaboration, contact Wen-Yao Hsu / Yao Shen 888π.</p>
+        </div>
+      </footer>
+    </div>
+
+    <script src="assets/js/main.js"></script>
+  </body>
+</html>
