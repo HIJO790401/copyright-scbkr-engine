@@ -1,5 +1,5 @@
 # Copyright SCBKR Responsibility-Boundary Engine v1
-
+https://hijo790401.github.io/copyright-scbkr-engine/
 著作權 SCBKR 責任邊界引擎 v1 / Copyright SCBKR Responsibility-Boundary Engine v1 是一個可直接部署於 GitHub Pages 的純前端雙語 Demo，用來展示內容或語料在不同授權條件與使用模式下，如何被判定為可成立、需警示、不可閉合、失效或越界，並輸出可追蹤的 Semantic Responsibility Hash。
 
 The Copyright SCBKR Responsibility-Boundary Engine v1 is a GitHub Pages-ready bilingual front-end demo that shows how content or datasets are adjudicated across licensing conditions and usage modes, producing traceable responsibility boundaries and a Semantic Responsibility Hash.
