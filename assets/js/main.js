@@ -1,146 +1,161 @@
-const failurePool = {
-  licenseCategory: '用途超出原授權分類 / Usage exceeds original license category',
-  substitution: '從摘要漂移到內容替代 / Summary drifts into content substitution',
-  retrievalTraining: '從檢索漂移到訓練 / Retrieval drifts into training',
-  researchCommercial: '從研究漂移到商業生成 / Research drifts into commercial generation',
-  chainOpen: '責任鏈未閉合 / Responsibility chain not closed',
-  reportingMissing: '回報責任人未設定 / Reporting owner not assigned',
-  scaleExceeded: '使用規模超出原聲明 / Usage scale exceeds declared scope',
-};
-
-const boundaryModels = {
-  READ_ONLY: {
-    title: 'READ_ONLY / 僅閱讀',
-    zh: '僅允許人工閱讀與參考，不得納入生成或訓練流程。',
-    en: 'Only allows human reading and reference, without entering generation or training workflows.',
-  },
-  INDEX_ONLY: {
-    title: 'INDEX_ONLY / 僅索引',
-    zh: '可建立檢索索引，但不得用於內容重寫或生成替代。',
-    en: 'May be indexed for retrieval, but not used for rewriting or substitute generation.',
-  },
-  SUMMARY_ONLY: {
-    title: 'SUMMARY_ONLY / 僅摘要',
-    zh: '內容可被濃縮說明，但不得形成可替代原文市場的輸出。',
-    en: 'Content may be condensed into summaries, but must not create outputs that substitute the original market.',
-  },
-  RAG_ASSIST: {
-    title: 'RAG_ASSIST / 檢索輔助',
-    zh: '可作為檢索輔助依據，但不得把來源內容直接吸收成模型權重。',
-    en: 'May support retrieval-augmented responses, but must not be absorbed into model weights.',
-  },
-  TRAINING_USE: {
-    title: 'TRAINING_USE / 訓練使用',
-    zh: '內容被納入模型學習或微調流程，風險與責任顯著提高。',
-    en: 'Content is incorporated into model learning or fine-tuning, increasing both risk and responsibility.',
-  },
-  COMMERCIAL_GEN: {
-    title: 'COMMERCIAL_GEN / 商業生成',
-    zh: '內容被用於直接或間接商業輸出，需重新審視授權與責任邊界。',
-    en: 'Content is used for direct or indirect commercial generation, requiring renewed licensing and responsibility review.',
-  },
-  REDISTRIBUTION: {
-    title: 'REDISTRIBUTION / 再分發',
-    zh: '內容或其衍生結果被再次傳播或提供給第三方。',
-    en: 'Content or its derivatives are redistributed or delivered to third parties.',
-  },
-};
-
 const scenarios = {
-  newsTaiwan: {
-    caseId: 'newsTaiwan',
-    labelZh: '台灣新聞內容授權',
-    labelEn: 'Taiwanese News Content Licensing',
-    caseTitleZh: '台灣新聞內容授權事件',
-    caseTitleEn: 'Taiwanese News Content Licensing Event',
-    sourceContent: '報導型新聞文章 / investigative news article',
-    applicantZh: '某 AI 團隊 / 某模型開發方',
-    applicantEn: 'An AI team / a model development group',
-    rolesZh: '專案負責人 / 法務窗口 / 模型操作人',
-    rolesEn: 'Project owner / Legal contact / Model operator',
-    scbkr: {
-      subjectZh: '主體可定位，但屬多角色責任鏈；申請方與操作方需共同進場。',
-      subjectEn: 'The subject is identifiable, but it enters as a multi-role responsibility chain shared by the applicant and operator.',
-      causeZh: '用途從新聞內容延伸到摘要、檢索、訓練與商業生成，使用鏈條逐步增強。',
-      causeEn: 'The use chain extends from news content into summary, retrieval, training, and commercial generation with escalating intensity.',
-      boundaryZh: '新聞內容具有明確市場替代風險，法律、生成與再分發邊界都必須被明示。',
-      boundaryEn: 'News content has a clear market substitution risk, so legal, generative, and redistribution boundaries must be explicit.',
-      costZh: '編採與報導成本高，資料價值敏感，替代與流量分流風險都偏高。',
-      costEn: 'Editorial and reporting costs are high, data value is sensitive, and both substitution and traffic diversion risks are elevated.',
-      responsibilityZh: '若轉為訓練或商業生成，責任需從單純使用責任重落到部署與商業決策責任。',
-      responsibilityEn: 'If the use shifts into training or commercial generation, responsibility must move from simple usage accountability into deployment and commercial decision liability.',
-    },
-    responsibilityAnchorZh: '原方窗口：內容權利方；使用方窗口：專案負責人 / 法務窗口 / 模型操作人。',
-    responsibilityAnchorEn: 'Origin owner: content rights holder; usage side: project owner / legal contact / model operator.',
+  news: {
+    labelZh: '新聞內容授權',
+    labelEn: 'News Content Licensing',
+    descriptionZh: '新聞資料具時效與授權限制，適合展示摘要、檢索與商業生成邊界差異。',
+    descriptionEn: 'News content carries timeliness and license constraints, making it suitable for showing differences between summary, retrieval, and commercial generation boundaries.',
+    source: '授權新聞資料庫 / Licensed news archive',
+    claim: '僅可提供有限轉述，不可替代原文發佈 / Limited paraphrase only, no substitute publication',
+    boundary: '需保留來源、日期、媒體與不可替代性聲明 / Must retain source, date, publisher, and non-substitution notice',
+    transformation: '從摘要可升高至生成再製風險 / Escalates from summary into generative reproduction risk',
+    relay: '責任由部署方、商業使用方與內容供應方串接 / Responsibility relays across deployer, commercial user, and content provider',
     uses: {
-      summary: { state: 'WARN', model: 'SUMMARY_ONLY', failure: ['licenseCategory', 'substitution'], summaryZh: '摘要暫時成立，但需限制長度與保留新聞來源。', summaryEn: 'Summary is conditionally valid, but length and source retention must be enforced.' },
-      rag: { state: 'WARN', model: 'RAG_ASSIST', failure: ['substitution', 'scaleExceeded'], summaryZh: 'RAG Assist 可用於檢索輔助，但不得把片段組裝成替代報導。', summaryEn: 'RAG Assist may support retrieval, but fragments must not be assembled into a substitute report.' },
-      training: { state: 'NON-CLOSABLE', model: 'TRAINING_USE', failure: ['retrievalTraining', 'chainOpen', 'reportingMissing'], summaryZh: '訓練使用使責任鏈無法閉合，需人工與法務共同介入。', summaryEn: 'Training use makes the responsibility chain non-closable and requires legal and human intervention.' },
-      commercial: { state: 'OVERRUN', model: 'COMMERCIAL_GEN', failure: ['licenseCategory', 'researchCommercial', 'scaleExceeded'], summaryZh: '商業生成已超出原新聞授權邊界，屬越界使用。', summaryEn: 'Commercial generation exceeds the original news licensing boundary and constitutes an overrun.' },
+      summary: {
+        state: 'WARN',
+        summary: '摘要可有限成立，但必須保留來源與引用範圍。 / Summary is conditionally valid, but source and quotation scope must be preserved.',
+        modelZh: '條件式衍生邊界：可做短摘要，不可構成替代閱讀。',
+        modelEn: 'Conditional derivation boundary: short summaries are allowed, but they cannot replace reading the source.',
+        failure: [
+          '移除原媒體、作者或日期資訊即失效。 / Removing publisher, author, or date invalidates the boundary.',
+          '摘要長度逼近原文再現時轉入警示。 / If the summary approaches source reproduction, the state remains warned.',
+        ],
+        anchor: [
+          'Anchor A1：來源媒體與出版日期 / Source publisher and publication date',
+          'Anchor A2：摘要長度上限與用途聲明 / Summary length limit and use declaration',
+        ],
+      },
+      rag: {
+        state: 'NON-CLOSABLE',
+        summary: '檢索輔助可提供片段回應，但若回收不到原授權閉環，責任鏈不可閉合。 / Retrieval assistance may cite fragments, but the chain becomes non-closable if it cannot return to the original license closure.',
+        modelZh: '不可閉合責任邊界：檢索引用可行，但必須可回指原內容與權利條件。',
+        modelEn: 'Non-closable liability boundary: retrieval quotation is possible only if it can point back to the original content and rights conditions.',
+        failure: [
+          '回答未保留引用位置與原始連結。 / The answer omits citation positions and source links.',
+          '模型將片段整合為替代型完整報導。 / The model combines fragments into a substitutive report.',
+        ],
+        anchor: [
+          'Anchor B1：檢索片段位置、URL 與版本號 / Retrieval span, URL, and version ID',
+          'Anchor B2：部署端提示詞與回答長度策略 / Deployer prompt and answer-length policy',
+        ],
+      },
+      training: {
+        state: 'NON-CLOSABLE',
+        summary: '將新聞內容納入訓練會讓原授權邊界難以回收，需額外授權。 / Training on news content makes the original license boundary hard to recover and requires additional authorization.',
+        modelZh: '不可閉合責任邊界：訓練將內容內化，無法用一般引用條件閉合責任。',
+        modelEn: 'Non-closable liability boundary: training internalizes the content and cannot close responsibility through ordinary citation terms.',
+        failure: [
+          '缺少明示訓練授權。 / No explicit training authorization is present.',
+          '無法證明模型輸出不會回吐核心內容。 / No proof that outputs will not leak core source content.',
+        ],
+        anchor: [
+          'Anchor C1：資料匯入清單與授權附件 / Data ingestion inventory and license annex',
+          'Anchor C2：模型版本與去識別化處理紀錄 / Model version and de-identification log',
+        ],
+      },
+      commercial: {
+        state: 'OVERRUN',
+        summary: '商業生成超過新聞授權邊界，主要責任轉由越界部署或商業使用方承擔。 / Commercial generation exceeds the news licensing boundary, shifting primary responsibility to the overrunning deployer or commercial user.',
+        modelZh: '商業越界邊界：若生成內容替代原新聞價值，即構成越界。',
+        modelEn: 'Overrun commercial boundary: once generated content substitutes the original news value, an overrun occurs.',
+        failure: [
+          '輸出可直接替代付費新聞或授權內容。 / Output directly substitutes paid or licensed news content.',
+          '生成結果被再分發或商品化。 / Generated results are redistributed or commercialized.',
+        ],
+        anchor: [
+          'Anchor D1：營收場景、產品頁與使用者規模 / Revenue scenario, product page, and user scale',
+          'Anchor D2：權利人通知與風險升級紀錄 / Rights-holder notice and escalation log',
+        ],
+      },
     },
   },
-  eduDataset: {
-    caseId: 'eduDataset',
+  education: {
     labelZh: '教材語料授權',
     labelEn: 'Educational Dataset Licensing',
-    caseTitleZh: '教材語料授權事件',
-    caseTitleEn: 'Educational Dataset Licensing Event',
-    sourceContent: '課程教材 / educational content',
-    applicantZh: '教育科技團隊',
-    applicantEn: 'Education technology team',
-    rolesZh: '課程平台主管 / 資料管理者 / 模型責任人',
-    rolesEn: 'Learning platform lead / Data steward / Model owner',
-    scbkr: {
-      subjectZh: '教育用途主體較清楚，責任可集中在平台與教材治理角色。',
-      subjectEn: 'The educational subject is clearer, and responsibility can be concentrated in platform and content governance roles.',
-      causeZh: '用途多半從內容整理走向教學輔助，偏向教學內部支持。',
-      causeEn: 'The usage chain typically moves from content organization into instructional assistance inside the learning context.',
-      boundaryZh: '摘要與檢索較容易成立，但商業生成需重新判定法律與商用邊界。',
-      boundaryEn: 'Summary and retrieval are easier to justify, but commercial generation requires renewed legal and commercial review.',
-      costZh: '教材具有整理、授課與教學設計成本，不宜被無差別替代。',
-      costEn: 'Educational materials embody curation, teaching, and instructional design costs and should not be indiscriminately substituted.',
-      responsibilityZh: '若跨到商業輸出，責任必須由平台、資料管理與模型責任人共同追加。',
-      responsibilityEn: 'If the use crosses into commercial output, responsibility must be explicitly expanded across the platform, data steward, and model owner.',
-    },
-    responsibilityAnchorZh: '原方窗口：教材權利方；使用方窗口：課程平台主管 / 資料管理者 / 模型責任人。',
-    responsibilityAnchorEn: 'Origin owner: educational rights holder; usage side: learning platform lead / data steward / model owner.',
+    descriptionZh: '教材資料具教育用途條件，適合展示 ALLOW 與 VOID 的切換。',
+    descriptionEn: 'Educational datasets carry teaching-use conditions, making them useful for showing transitions between ALLOW and VOID.',
+    source: '教材授權包與教學用途條款 / Licensed educational package and teaching-use terms',
+    claim: '可於教學輔助使用，不得脫離教育情境商品化 / Usable for instructional assistance, not for commercialization outside education',
+    boundary: '必須限定教育機構、課程場景與引用標記 / Must remain within educational institutions, course contexts, and marked quotation',
+    transformation: '從輔助摘要延伸到訓練與再分發時需重審 / Reassessment is required once assistance extends into training or redistribution',
+    relay: '責任由教材供應方、校方與部署方共同承接 / Responsibility is shared by the content licensor, institution, and deployer',
     uses: {
-      summary: { state: 'ALLOW', model: 'SUMMARY_ONLY', failure: ['substitution'], summaryZh: '教材摘要在教學情境內可成立。', summaryEn: 'Educational summary is valid within the teaching context.' },
-      rag: { state: 'WARN', model: 'RAG_ASSIST', failure: ['licenseCategory', 'scaleExceeded'], summaryZh: '教學檢索輔助可成立，但需限制使用者與範圍。', summaryEn: 'Teaching-oriented RAG assistance is valid with restrictions on users and scope.' },
-      training: { state: 'WARN', model: 'TRAINING_USE', failure: ['retrievalTraining', 'reportingMissing'], summaryZh: '若以研究或教學輔助訓練使用，需保留責任追蹤與回報機制。', summaryEn: 'If used for research or teaching-support training, traceability and reporting must remain in place.' },
-      commercial: { state: 'NON-CLOSABLE', model: 'COMMERCIAL_GEN', failure: ['researchCommercial', 'chainOpen', 'scaleExceeded'], summaryZh: '教材若走向商業生成，原教育責任鏈無法自然閉合。', summaryEn: 'If educational material shifts into commercial generation, the original educational responsibility chain cannot close naturally.' },
+      summary: {
+        state: 'ALLOW',
+        summary: '在課程內做摘要與導讀時，授權與責任邊界完整成立。 / Summaries and guided-reading support inside a course remain fully valid.',
+        modelZh: '閉合歸因邊界：教育場景、引用標記與非商業前提齊備。',
+        modelEn: 'Closed attribution boundary: educational context, citation marking, and non-commercial assumptions are all in place.',
+        failure: ['脫離課程情境即失去 ALLOW。 / Leaving the course context removes ALLOW.', '未標示教材來源會降為 WARN。 / Missing source marking downgrades the state to WARN.'],
+        anchor: ['Anchor E1：課程代碼與授課單位 / Course code and institution', 'Anchor E2：教材版本與引用頁碼 / Material version and cited pages'],
+      },
+      rag: {
+        state: 'WARN',
+        summary: '教育檢索輔助可成立，但必須限制查詢對象與回應範圍。 / Educational retrieval assistance is valid with restrictions on query scope and answer range.',
+        modelZh: '條件式衍生邊界：僅限課內問答，不可形成公開知識庫。',
+        modelEn: 'Conditional derivation boundary: limited to class Q&A and not for building a public knowledge base.',
+        failure: ['開放給非課程成員時超出原授權。 / Opening access to non-course members exceeds the original license.', '回答整合成可下載教材包。 / Responses are compiled into a downloadable teaching package.'],
+        anchor: ['Anchor F1：使用者群組限制 / User group restriction', 'Anchor F2：回答可見性與存取日誌 / Answer visibility and access log'],
+      },
+      training: {
+        state: 'WARN',
+        summary: '若教材授權明示允許研究性訓練，可暫列 WARN；否則需升級審查。 / If the material license explicitly allows research training, it may remain WARN; otherwise review must escalate.',
+        modelZh: '條件式衍生邊界：需有研究條款與不可商轉限制。',
+        modelEn: 'Conditional derivation boundary: requires research clauses and non-commercial transfer limits.',
+        failure: ['無研究條款附件。 / Research clause annex is missing.', '訓練成果轉入商用產品。 / Training outputs are moved into commercial products.'],
+        anchor: ['Anchor G1：研究使用授權附件 / Research-use licensing annex', 'Anchor G2：模型用途隔離紀錄 / Model purpose segregation log'],
+      },
+      commercial: {
+        state: 'VOID',
+        summary: '教材語料若直接轉為商業生成服務，原教育授權即失效。 / If educational materials are turned into a commercial generation service, the original educational license becomes void.',
+        modelZh: '授權失效邊界：教育用途條款無法支撐外部商品化。',
+        modelEn: 'Void licensing boundary: educational-use terms cannot support external commercialization.',
+        failure: ['對外收費且未取得商用條款。 / Charging external users without commercial terms.', '輸出內容重建教材核心結構。 / Outputs reconstruct the material’s core structure.'],
+        anchor: ['Anchor H1：商業定價頁與產品方案 / Commercial pricing page and product plan', 'Anchor H2：授權條款缺口報告 / Licensing gap report'],
+      },
     },
   },
-  mediaCommercial: {
-    caseId: 'mediaCommercial',
-    labelZh: '媒體內容商業生成使用',
-    labelEn: 'Media Content Commercial Generative Use',
-    caseTitleZh: '媒體內容商業生成使用事件',
-    caseTitleEn: 'Media Content Commercial Generative Use Event',
-    sourceContent: '媒體文章與評論內容 / media article and commentary content',
-    applicantZh: '商業生成平台',
-    applicantEn: 'Commercial generation platform',
-    rolesZh: '平台營運責任人 / 模型部署責任人 / 回報責任人',
-    rolesEn: 'Platform operations owner / Deployment owner / Reporting owner',
-    scbkr: {
-      subjectZh: '主體雖可落地，但商業平台責任更重，回報鏈需要更清楚。',
-      subjectEn: 'The subject is identifiable, but the commercial platform bears heavier responsibility and needs a clearer reporting chain.',
-      causeZh: '用途直接靠近生成與市場替代，原因鏈條更短且更具外部影響。',
-      causeEn: 'The usage chain sits directly near generation and market substitution, with shorter and more externally impactful causation.',
-      boundaryZh: '邊界極易越界，特別是生成、再分發與商用邊界。',
-      boundaryEn: 'Its boundaries are easy to overrun, especially across generative, redistribution, and commercial limits.',
-      costZh: '替代、流量分流與品牌損耗風險更高，現實代價更直接。',
-      costEn: 'Substitution, traffic diversion, and brand erosion risks are higher, making real-world costs more immediate.',
-      responsibilityZh: '若回報與追蹤不足，責任鏈很快斷裂，平台側責任將快速擴大。',
-      responsibilityEn: 'If reporting and tracing are insufficient, the responsibility chain breaks quickly and platform-side liability expands fast.',
-    },
-    responsibilityAnchorZh: '原方窗口：媒體權利方；使用方窗口：平台營運責任人 / 模型部署責任人 / 回報責任人。',
-    responsibilityAnchorEn: 'Origin owner: media rights holder; usage side: platform operations owner / deployment owner / reporting owner.',
+  media: {
+    labelZh: '媒體內容生成使用',
+    labelEn: 'Media Content Generative Use',
+    descriptionZh: '媒體內容進入生成式流程時，邊界與責任會快速轉移。',
+    descriptionEn: 'Once media content enters generative workflows, boundaries and responsibilities shift rapidly.',
+    source: '媒體片段、影像腳本與品牌授權條款 / Media clips, scripts, and brand licensing terms',
+    claim: '可做內部參考與風格分析，不得未經授權對外替代發佈 / Internal reference and style analysis are allowed, but external substitutive publication is not',
+    boundary: '需區分參考、衍生、再製與品牌混淆 / Must distinguish reference, derivation, reproduction, and brand confusion',
+    transformation: '從風格分析走向生成替代時風險急升 / Risk rises sharply as style analysis shifts into generative substitution',
+    relay: '責任由模型操作者、創作者與上架平台共同承接 / Responsibility is relayed across the model operator, creator, and distribution platform',
     uses: {
-      summary: { state: 'WARN', model: 'SUMMARY_ONLY', failure: ['substitution', 'reportingMissing'], summaryZh: '摘要可短暫成立，但需防止評論被重組成可替代內容。', summaryEn: 'Summary may remain conditionally valid, but commentary must not be recomposed into substitute content.' },
-      rag: { state: 'NON-CLOSABLE', model: 'RAG_ASSIST', failure: ['retrievalTraining', 'chainOpen', 'reportingMissing'], summaryZh: '檢索輔助若無法維持明確回報與引用閉環，即屬不可閉合。', summaryEn: 'If retrieval assistance cannot preserve explicit reporting and citation closure, it becomes non-closable.' },
-      training: { state: 'OVERRUN', model: 'TRAINING_USE', failure: ['licenseCategory', 'retrievalTraining', 'scaleExceeded'], summaryZh: '媒體內容進入訓練即快速跨越原始授權邊界。', summaryEn: 'Once media content enters training, it quickly crosses the original licensing boundary.' },
-      commercial: { state: 'VOID', model: 'COMMERCIAL_GEN', failure: ['licenseCategory', 'researchCommercial', 'chainOpen', 'scaleExceeded'], summaryZh: '商業生成平台直接使用媒體內容生成輸出，不具成立資格。', summaryEn: 'A commercial generation platform using media content directly for output does not qualify as valid.' },
+      summary: {
+        state: 'WARN',
+        summary: '可做風格摘要，但不可暗示生成內容等同原媒體作品。 / Style summaries are possible, but generated content cannot be implied to equal the original work.',
+        modelZh: '條件式衍生邊界：限於風格解析與內部評估。',
+        modelEn: 'Conditional derivation boundary: limited to style analysis and internal evaluation.',
+        failure: ['摘要加入可直接複製的場景結構。 / Summary includes directly reproducible scene structures.', '對外宣稱可替代原媒體素材。 / Publicly claiming it can replace the original media asset.'],
+        anchor: ['Anchor M1：內容片段 ID 與場景編號 / Asset fragment ID and scene number', 'Anchor M2：對外說明文案 / External messaging copy'],
+      },
+      rag: {
+        state: 'WARN',
+        summary: 'RAG Assist 可檢索授權片段，但需嚴格避免產生可重建的完整腳本。 / RAG Assist may retrieve licensed fragments, but must strictly avoid reconstructing a full script.',
+        modelZh: '條件式衍生邊界：片段索引可行，完整重建不可行。',
+        modelEn: 'Conditional derivation boundary: fragment indexing is viable, full reconstruction is not.',
+        failure: ['多輪對話累積成完整台詞。 / Multi-turn interaction accumulates into a complete dialogue.', '檢索結果跨品牌授權混用。 / Retrieval results mix content across brand licenses.'],
+        anchor: ['Anchor M3：對話輪次記錄 / Conversation turn record', 'Anchor M4：品牌授權映射表 / Brand license mapping table'],
+      },
+      training: {
+        state: 'VOID',
+        summary: '未明示授權下以媒體內容進行訓練，原邊界直接失效。 / Training on media content without explicit authorization voids the original boundary immediately.',
+        modelZh: '授權失效邊界：內容進入訓練權利缺口。',
+        modelEn: 'Void licensing boundary: content enters a training-rights gap.',
+        failure: ['未取得訓練或衍生創作權。 / No training or derivative-creation rights obtained.', '模型可再現角色、腳本或視覺識別。 / The model can recreate characters, scripts, or visual identity.'],
+        anchor: ['Anchor M5：權利盤點清單 / Rights inventory list', 'Anchor M6：訓練資料集組成證據 / Training dataset composition evidence'],
+      },
+      commercial: {
+        state: 'OVERRUN',
+        summary: '商業生成若足以替代原媒體內容，將構成越界並產生高責任暴露。 / Commercial generation that can substitute original media content constitutes an overrun with high liability exposure.',
+        modelZh: '商業越界邊界：替代性、品牌混淆與再分發風險同時成立。',
+        modelEn: 'Overrun commercial boundary: substitutability, brand confusion, and redistribution risk arise together.',
+        failure: ['生成內容進入付費產品或廣告。 / Generated content enters paid products or advertising.', '使用者被誤導為官方或原創授權內容。 / Users are misled into believing the output is official or originally licensed.'],
+        anchor: ['Anchor M7：商品頁與宣傳素材 / Product page and promotional assets', 'Anchor M8：平台上架與告警紀錄 / Platform listing and alert history'],
+      },
     },
   },
 };
@@ -152,14 +167,12 @@ const usageOptions = {
   commercial: { labelZh: '商業生成', labelEn: 'Commercial Generation' },
 };
 
-const appState = { selectedCase: 'newsTaiwan', selectedUse: 'summary', currentResult: null, autoTimer: null };
+const appState = { selectedCase: 'news', selectedUse: 'summary', currentResult: null, autoTimer: null };
 
 const caseButtons = document.getElementById('caseButtons');
 const useButtons = document.getElementById('useButtons');
 const selectedCaseLabel = document.getElementById('selectedCaseLabel');
 const selectedUseLabel = document.getElementById('selectedUseLabel');
-const selectionPreview = document.getElementById('selectionPreview');
-const caseTitle = document.getElementById('caseTitle');
 const decisionState = document.getElementById('decisionState');
 const decisionSummary = document.getElementById('decisionSummary');
 const scbkrBreakdown = document.getElementById('scbkrBreakdown');
@@ -171,11 +184,11 @@ const timestampValue = document.getElementById('timestampValue');
 const autoDemoTimeline = document.getElementById('autoDemoTimeline');
 
 const autoDemoSteps = [
-  { caseKey: 'newsTaiwan', useKey: 'summary', label: '載入案例 1：台灣新聞內容授權，用途 Summary，顯示 WARN。 / Load Case 1 Taiwanese News Content Licensing with Summary and show WARN.' },
-  { caseKey: 'newsTaiwan', useKey: 'rag', label: '切換到 RAG Assist，顯示 WARN。 / Switch to RAG Assist and show WARN.' },
-  { caseKey: 'newsTaiwan', useKey: 'training', label: '切換到 Training，顯示 NON-CLOSABLE。 / Switch to Training and show NON-CLOSABLE.' },
-  { caseKey: 'newsTaiwan', useKey: 'commercial', label: '切換到 Commercial Generation，顯示 OVERRUN。 / Switch to Commercial Generation and show OVERRUN.' },
-  { action: 'hash', label: '最後生成 Semantic Responsibility Hash 與責任錨點輸出。 / Finally generate the Semantic Responsibility Hash and responsibility anchor output.' },
+  { caseKey: 'news', useKey: 'summary', label: '載入新聞案例並以 Summary 執行，結果為 WARN。 / Load the news scenario and run Summary, resulting in WARN.' },
+  { caseKey: 'news', useKey: 'rag', label: '切換至 RAG Assist，責任鏈轉為 NON-CLOSABLE。 / Switch to RAG Assist; the responsibility chain becomes NON-CLOSABLE.' },
+  { caseKey: 'news', useKey: 'training', label: '升高至 Training，維持 NON-CLOSABLE 並要求額外授權。 / Escalate to Training; the state remains NON-CLOSABLE and demands additional authorization.' },
+  { caseKey: 'news', useKey: 'commercial', label: '進入 Commercial Generation，判定為 OVERRUN。 / Move into Commercial Generation, resulting in OVERRUN.' },
+  { action: 'hash', label: '生成 Semantic Responsibility Hash，完成可追蹤輸出。 / Generate the Semantic Responsibility Hash to complete the traceable output.' },
 ];
 
 function renderButtons() {
@@ -184,56 +197,48 @@ function renderButtons() {
       <strong>${scenario.labelZh}</strong>
       <span>${scenario.labelEn}</span>
     </button>`).join('');
+
   useButtons.innerHTML = Object.entries(usageOptions).map(([key, option]) => `
     <button class="chip ${appState.selectedUse === key ? 'is-active' : ''}" type="button" data-use="${key}">
       <strong>${option.labelZh}</strong>
       <span>${option.labelEn}</span>
     </button>`).join('');
 
-  caseButtons.querySelectorAll('[data-case]').forEach((button) => button.addEventListener('click', () => {
-    appState.selectedCase = button.dataset.case;
-    updateSelectionSummary();
-    renderButtons();
-  }));
-  useButtons.querySelectorAll('[data-use]').forEach((button) => button.addEventListener('click', () => {
-    appState.selectedUse = button.dataset.use;
-    updateSelectionSummary();
-    renderButtons();
-  }));
-  updateSelectionSummary();
-}
+  selectedCaseLabel.textContent = `${scenarios[appState.selectedCase].labelZh} / ${scenarios[appState.selectedCase].labelEn}`;
+  selectedUseLabel.textContent = `${usageOptions[appState.selectedUse].labelZh} / ${usageOptions[appState.selectedUse].labelEn}`;
 
-function updateSelectionSummary() {
-  const scenario = scenarios[appState.selectedCase];
-  const usage = usageOptions[appState.selectedUse];
-  selectedCaseLabel.textContent = `${scenario.caseTitleZh} / ${scenario.caseTitleEn}`;
-  selectedUseLabel.textContent = `${usage.labelZh} / ${usage.labelEn}`;
-  selectionPreview.innerHTML = `
-    <p><strong>來源內容 / Source Content:</strong> ${scenario.sourceContent}</p>
-    <p><strong>申請方 / Applicant:</strong> ${scenario.applicantZh} / ${scenario.applicantEn}</p>
-    <p><strong>預設責任人 / Default Responsible Roles:</strong> ${scenario.rolesZh} / ${scenario.rolesEn}</p>`;
+  caseButtons.querySelectorAll('[data-case]').forEach((button) => {
+    button.addEventListener('click', () => {
+      appState.selectedCase = button.dataset.case;
+      renderButtons();
+    });
+  });
+
+  useButtons.querySelectorAll('[data-use]').forEach((button) => {
+    button.addEventListener('click', () => {
+      appState.selectedUse = button.dataset.use;
+      renderButtons();
+    });
+  });
 }
 
 function buildResult(caseKey, useKey) {
   const scenario = scenarios[caseKey];
-  const use = scenario.uses[useKey];
-  const model = boundaryModels[use.model];
-  const timestamp = new Date().toISOString();
+  const usage = scenario.uses[useKey];
   return {
-    caseTitle: `${scenario.caseTitleZh} / ${scenario.caseTitleEn}`,
-    subject: `${scenario.scbkr.subjectZh} / ${scenario.scbkr.subjectEn}`,
-    cause: `${scenario.scbkr.causeZh} / ${scenario.scbkr.causeEn}`,
-    boundary: `${scenario.scbkr.boundaryZh} / ${scenario.scbkr.boundaryEn}`,
-    cost: `${scenario.scbkr.costZh} / ${scenario.scbkr.costEn}`,
-    responsibility: `${scenario.scbkr.responsibilityZh} / ${scenario.scbkr.responsibilityEn}`,
-    state: use.state,
-    summary: `${use.summaryZh} / ${use.summaryEn}`,
-    model,
-    failure: use.failure.map((key) => failurePool[key]),
-    responsibilityAnchorZh: scenario.responsibilityAnchorZh,
-    responsibilityAnchorEn: scenario.responsibilityAnchorEn,
-    timestamp,
-    hashSeed: [scenario.caseId, useKey, use.model, use.state, scenario.rolesZh, scenario.sourceContent].join('|'),
+    state: usage.state,
+    summary: usage.summary,
+    breakdown: {
+      'S — Source Scope / 來源範圍': scenario.source,
+      'C — Claim Surface / 主張表面': scenario.claim,
+      'B — Boundary Integrity / 邊界完整性': scenario.boundary,
+      'K — Knowledge Transformation / 知識轉換': scenario.transformation,
+      'R — Responsibility Relay / 責任接力': scenario.relay,
+    },
+    model: [usage.modelZh, usage.modelEn],
+    failure: usage.failure,
+    anchor: usage.anchor,
+    baseString: `${caseKey}|${useKey}|${usage.state}|${scenario.source}|${scenario.boundary}`,
   };
 }
 
@@ -242,41 +247,23 @@ function stateClass(state) {
 }
 
 function renderResult(result) {
-  appState.currentResult = result;
-  caseTitle.innerHTML = `<p>${result.caseTitle}</p>`;
+  const timestamp = new Date().toISOString();
+  appState.currentResult = { ...result, timestamp };
   decisionState.className = `decision-state ${stateClass(result.state)} is-animating`;
   decisionState.textContent = result.state;
   setTimeout(() => decisionState.classList.remove('is-animating'), 80);
   decisionSummary.textContent = result.summary;
-  scbkrBreakdown.innerHTML = [
-    ['S — Subject / 主體', result.subject],
-    ['C — Cause / 因果', result.cause],
-    ['B — Boundary / 邊界', result.boundary],
-    ['K — Cost Cluster / 成本簇', result.cost],
-    ['R — Responsibility / 責任', result.responsibility],
-  ].map(([term, value]) => `<div><dt>${term}</dt><dd>${value}</dd></div>`).join('');
-  boundaryModel.innerHTML = `<p><strong>${result.model.title}</strong></p><p>${result.model.zh}</p><p>${result.model.en}</p>`;
+  scbkrBreakdown.innerHTML = Object.entries(result.breakdown).map(([term, value]) => `
+    <div>
+      <dt>${term}</dt>
+      <dd>${value}</dd>
+    </div>`).join('');
+  boundaryModel.innerHTML = result.model.map((paragraph) => `<p>${paragraph}</p>`).join('');
   failureConditions.innerHTML = result.failure.map((item) => `<li>${item}</li>`).join('');
-  responsibilityAnchor.innerHTML = `<p>${result.responsibilityAnchorZh}</p><p>${result.responsibilityAnchorEn}</p>`;
-  hashValue.textContent = 'Hash pending. Click Generate Responsibility Hash. / 雜湊待生成，請按生成責任雜湊。';
+  responsibilityAnchor.innerHTML = result.anchor.map((item) => `<li>${item}</li>`).join('');
   hashValue.classList.remove('is-generating');
-  timestampValue.textContent = `Timestamp / 時間戳：${result.timestamp}`;
-}
-
-function stableHash(input) {
-  let h1 = 0x811c9dc5;
-  let h2 = 0x01000193;
-  for (let i = 0; i < input.length; i += 1) {
-    const code = input.charCodeAt(i);
-    h1 ^= code;
-    h1 = Math.imul(h1, 16777619);
-    h2 = Math.imul(h2 ^ code, 2246822519);
-  }
-  const a = (h1 >>> 0).toString(16).padStart(8, '0');
-  const b = (h2 >>> 0).toString(16).padStart(8, '0');
-  const c = (((h1 ^ h2) >>> 0)).toString(16).padStart(8, '0');
-  const d = (((h1 + h2) >>> 0)).toString(16).padStart(8, '0');
-  return `SRH-v1::${a}-${b}-${c}-${d}`;
+  hashValue.textContent = 'Hash pending. Click “Generate Responsibility Hash”. / 雜湊待生成，請按「生成責任雜湊」。';
+  timestampValue.textContent = `Timestamp / 時間戳記：${timestamp}`;
 }
 
 async function generateHash(animated = true) {
@@ -284,52 +271,64 @@ async function generateHash(animated = true) {
     decisionSummary.textContent = '請先執行裁決，再生成責任雜湊。 / Run a judgment before generating the responsibility hash.';
     return;
   }
-  const signature = stableHash(appState.currentResult.hashSeed);
+  const seed = `${appState.currentResult.baseString}|${appState.currentResult.timestamp}`;
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed));
+  const hashHex = Array.from(new Uint8Array(buffer)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  const formatted = `SRH-v1::${hashHex.slice(0, 16)}-${hashHex.slice(16, 32)}-${hashHex.slice(32, 48)}`;
+
   if (!animated) {
-    hashValue.textContent = signature;
-    return signature;
+    hashValue.textContent = formatted;
+    return formatted;
   }
-  hashValue.textContent = '';
+
   hashValue.classList.add('is-generating');
-  for (const char of signature) {
+  hashValue.textContent = '';
+  for (const char of formatted) {
     hashValue.textContent += char;
-    await new Promise((resolve) => setTimeout(resolve, 18));
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, 22));
   }
   hashValue.classList.remove('is-generating');
-  return signature;
+  return formatted;
 }
 
 function resetDemo() {
-  clearTimeout(appState.autoTimer);
+  window.clearTimeout(appState.autoTimer);
   appState.currentResult = null;
-  caseTitle.innerHTML = '<p>待執行裁決。 / Awaiting judgment.</p>';
   decisionState.className = 'decision-state decision-state--idle';
   decisionState.textContent = 'READY';
-  decisionSummary.textContent = '選擇案例與用途後按下執行裁決。 / Select a case and use mode, then click Run Judgment.';
-  scbkrBreakdown.innerHTML = '<div><dt>S / C / B / K / R</dt><dd>執行裁決後顯示完整內容。 / Full content appears after judgment.</dd></div>';
+  decisionSummary.textContent = '選擇案例與用途後執行裁決。 / Select a scenario and usage mode, then run judgment.';
+  scbkrBreakdown.innerHTML = '';
   boundaryModel.innerHTML = '<p>待執行裁決。 / Awaiting judgment.</p>';
-  failureConditions.innerHTML = '<li>尚未產生失效條件。 / No failure conditions generated yet.</li>';
-  responsibilityAnchor.innerHTML = '<p>尚未建立責任錨點。 / Responsibility anchor not generated yet.</p>';
+  failureConditions.innerHTML = '<li>尚未執行裁決。 / Judgment has not been executed.</li>';
+  responsibilityAnchor.innerHTML = '<li>尚未建立責任錨點。 / Responsibility anchors have not been created yet.</li>';
   hashValue.textContent = 'Awaiting judgment / 等待裁決';
   hashValue.classList.remove('is-generating');
-  timestampValue.textContent = 'Timestamp / 時間戳：—';
-  renderAutoDemoTimeline();
+  timestampValue.textContent = 'Timestamp / 時間戳記：—';
+  autoDemoTimeline.querySelectorAll('li').forEach((item) => item.className = '');
 }
 
-function renderAutoDemoTimeline(activeIndex = -1) {
-  autoDemoTimeline.innerHTML = autoDemoSteps.map((step, index) => `<li class="${index < activeIndex ? 'is-complete' : ''} ${index === activeIndex ? 'is-active' : ''}" data-step="${index + 1}">${step.label}</li>`).join('');
+function renderAutoDemoTimeline() {
+  autoDemoTimeline.innerHTML = autoDemoSteps.map((step, index) => `<li data-step="${index + 1}">${step.label}</li>`).join('');
 }
 
 async function playAutoDemo() {
-  clearTimeout(appState.autoTimer);
+  window.clearTimeout(appState.autoTimer);
   document.getElementById('auto-demo').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  appState.selectedCase = 'newsTaiwan';
+  renderAutoDemoTimeline();
+  resetDemo();
+  appState.selectedCase = 'news';
   appState.selectedUse = 'summary';
   renderButtons();
-  resetDemo();
-  for (let i = 0; i < autoDemoSteps.length; i += 1) {
-    const step = autoDemoSteps[i];
-    renderAutoDemoTimeline(i);
+
+  const items = [...autoDemoTimeline.querySelectorAll('li')];
+  for (let index = 0; index < autoDemoSteps.length; index += 1) {
+    const step = autoDemoSteps[index];
+    items.forEach((item, itemIndex) => {
+      item.classList.toggle('is-active', itemIndex === index);
+      item.classList.toggle('is-complete', itemIndex < index);
+    });
+
     if (step.action === 'hash') {
       await generateHash(true);
     } else {
@@ -338,9 +337,10 @@ async function playAutoDemo() {
       renderButtons();
       renderResult(buildResult(step.caseKey, step.useKey));
     }
-    await new Promise((resolve) => { appState.autoTimer = setTimeout(resolve, i === autoDemoSteps.length - 1 ? 300 : 1300); });
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => { appState.autoTimer = window.setTimeout(resolve, index === autoDemoSteps.length - 1 ? 300 : 1100); });
   }
-  renderAutoDemoTimeline(autoDemoSteps.length);
+  items.forEach((item) => { item.classList.remove('is-active'); item.classList.add('is-complete'); });
 }
 
 function setupReveal() {
@@ -350,16 +350,17 @@ function setupReveal() {
     entries.forEach((entry) => {
       if (entry.isIntersecting) entry.target.classList.add('is-visible');
     });
-  }, { threshold: 0.12 });
+  }, { threshold: 0.14 });
   sections.forEach((section) => observer.observe(section));
 }
 
 document.getElementById('runJudgment').addEventListener('click', () => renderResult(buildResult(appState.selectedCase, appState.selectedUse)));
-document.getElementById('generateHash').addEventListener('click', () => generateHash(true));
+document.getElementById('generateHash').addEventListener('click', () => { generateHash(true); });
 document.getElementById('resetDemo').addEventListener('click', resetDemo);
 document.getElementById('playAutoDemo').addEventListener('click', playAutoDemo);
 document.getElementById('heroAutoDemo').addEventListener('click', playAutoDemo);
 
 renderButtons();
+renderAutoDemoTimeline();
 resetDemo();
 setupReveal();

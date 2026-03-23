@@ -289,14 +289,3 @@ a:hover { text-decoration: underline; }
   .decision-state { font-size: clamp(2.5rem, 12vw, 4rem); }
   .chip { min-width: 100%; }
 }
-
-
-.selection-preview { margin-top: 12px; display: grid; gap: 6px; font-size: 0.93rem; }
-.selection-preview p, .detail-copy p { margin: 0 0 8px; line-height: 1.65; }
-.detail-panel--case { grid-column: 1 / -1; }
-.hash-note { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
-.model-grid--seven > * { grid-column: span 4; }
-.state-grid--five > * { grid-column: span 4; }
-@media (max-width: 960px) {
-  .model-grid--seven > *, .state-grid--five > * { grid-column: span 12; }
-}
